@@ -9,6 +9,7 @@ extern "C" {
 
 typedef int (*scheduler_task_func)(void);
 
+#define SCHEDULER_STOP_TASK 0
 /**
  * Add task to scheduler queue
  * 

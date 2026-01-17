@@ -1,11 +1,14 @@
 #include "unity.h"
 #include <scheduler.h>
-//#include <stdio.h>
+#include <stdio.h>
 
 uint32_t call_counter__task_interval_3 = 0;
 uint32_t call_counter__task_interval_5 = 0;
 uint32_t call_counter__task_interval_7 = 0;
 uint32_t call_counter__task_once = 0;
+
+uint32_t call_counter__main_task = 0;
+uint32_t call_counter__sub_task = 0;
 
 
 void setUp(void)
@@ -16,6 +19,8 @@ void setUp(void)
     call_counter__task_interval_5 = 0;
     call_counter__task_interval_7 = 0;
     call_counter__task_once = 0;
+    call_counter__main_task = 0;
+    call_counter__sub_task = 0;
 }
 
 void tearDown(void)
@@ -296,6 +301,68 @@ void test_scheduler_loop__called_late(void)
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 }
 
+int sub_task(void)
+{
+    printf("sub_task\n");
+    call_counter__sub_task++;
+    return SCHEDULER_STOP_TASK;
+}
+
+int main_task(void)
+{
+    printf("main_task\n");
+    call_counter__main_task++;
+    scheduler_add_task(sub_task, 2);
+    return 10;
+}
+
+void test_scheduler_loop__task_add_new_task(void)
+{
+    uint32_t time = 0;
+    uint32_t next_time = 0;
+    next_time = scheduler_loop(time);
+    TEST_ASSERT_EQUAL(0, next_time);
+
+    scheduler_add_task(main_task, 20);
+    /*
+    20  main
+    22      sub
+    30  main
+    32      sub
+    */
+
+    TEST_ASSERT_EQUAL(0, call_counter__main_task);
+    TEST_ASSERT_EQUAL(0, call_counter__sub_task);
+
+    next_time = scheduler_loop(time); // time 0
+    TEST_ASSERT_EQUAL(20, next_time);
+    TEST_ASSERT_EQUAL(0, call_counter__main_task);
+    TEST_ASSERT_EQUAL(0, call_counter__sub_task);
+
+    time += next_time;
+    next_time = scheduler_loop(time); // time 20
+    TEST_ASSERT_EQUAL(2, next_time);
+    TEST_ASSERT_EQUAL(1, call_counter__main_task);
+    TEST_ASSERT_EQUAL(0, call_counter__sub_task);
+
+    time += next_time;
+    next_time = scheduler_loop(time); // time 22
+    TEST_ASSERT_EQUAL(8, next_time);
+    TEST_ASSERT_EQUAL(1, call_counter__main_task);
+    TEST_ASSERT_EQUAL(1, call_counter__sub_task);
+
+    time += next_time;
+    next_time = scheduler_loop(time); // time 30
+    TEST_ASSERT_EQUAL(2, next_time);
+    TEST_ASSERT_EQUAL(2, call_counter__main_task);
+    TEST_ASSERT_EQUAL(1, call_counter__sub_task);
+
+    time += next_time;
+    next_time = scheduler_loop(time); // time 32
+    TEST_ASSERT_EQUAL(8, next_time);
+    TEST_ASSERT_EQUAL(2, call_counter__main_task);
+    TEST_ASSERT_EQUAL(2, call_counter__sub_task);
+}
 
 // TODO tests
 // - task add itself new task to scheduler -> verify that tasks does not break, when updating table during execution
@@ -309,6 +376,7 @@ int runUnityTests(void)
     RUN_TEST(test_scheduler_loop__one_shot_task);
     RUN_TEST(test_scheduler_loop__three_tasks);
     RUN_TEST(test_scheduler_loop__called_late);
+    RUN_TEST(test_scheduler_loop__task_add_new_task);
     return UNITY_END();
 }
 

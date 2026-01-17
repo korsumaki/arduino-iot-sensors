@@ -24,6 +24,7 @@ void scheduler_clear_all(void)
     }
 }
 
+#if 0
 void scheduler_print_table(void)
 {
     //printf("Scheduler table:\n");
@@ -36,6 +37,7 @@ void scheduler_print_table(void)
         }
     }
 }
+#endif // 0
 
 static void scheduler_sort_forward(void)
 {
@@ -46,14 +48,11 @@ static void scheduler_sort_forward(void)
     {
         if (task_queue[ind1].task != NULL && task_queue[ind2].task != NULL)
         {
-            //printf("    compare times: %d vs %d\n", task_queue[ind1].next_call_ms, task_queue[ind2].next_call_ms);
             if (task_queue[ind1].next_call_ms > task_queue[ind2].next_call_ms)
             {
-                //printf("    swap\n");
                 scheduler_item_t tmp_item2 = task_queue[ind2];
                 task_queue[ind2] = task_queue[ind1];
                 task_queue[ind1] = tmp_item2;
-                //printf("    after swap: %d vs %d\n", task_queue[ind1].next_call_ms, task_queue[ind2].next_call_ms);
             }
         }
     }
@@ -68,20 +67,17 @@ static void scheduler_sort_backward(void)
     {
         if (task_queue[ind1].task != NULL && task_queue[ind2].task != NULL)
         {
-            //printf("    compare times: %d vs %d\n", task_queue[ind1].next_call_ms, task_queue[ind2].next_call_ms);
             if (task_queue[ind1].next_call_ms > task_queue[ind2].next_call_ms)
             {
-                //printf("    swap\n");
                 scheduler_item_t tmp_item2 = task_queue[ind2];
                 task_queue[ind2] = task_queue[ind1];
                 task_queue[ind1] = tmp_item2;
-                //printf("    after swap: %d vs %d\n", task_queue[ind1].next_call_ms, task_queue[ind2].next_call_ms);
             }
         }
     }
 }
 
-void scheduler_remove_first_task(void)
+static void scheduler_remove_first_task(void)
 {
     uint32_t ind1 = 0;
     uint32_t ind2 = 1;
@@ -89,7 +85,6 @@ void scheduler_remove_first_task(void)
     {
         if (task_queue[ind1].task != NULL || task_queue[ind2].task != NULL)
         {
-            //printf("    move %d to %d\n", ind2, ind1);
             task_queue[ind1] = task_queue[ind2];
         }
     }
@@ -109,10 +104,7 @@ void scheduler_add_task(scheduler_task_func task, uint32_t call_after_ms)
     task_queue[index].next_call_ms = scheduler_current_time_ms + call_after_ms;
     task_queue[index].task = task;
 
-    //printf("scheduler_add_task reordering:\n");
-    //scheduler_print_table();
-
-    scheduler_sort_backward(); // TODO should do backward, when queue has more than 2 items
+    scheduler_sort_backward();
     //scheduler_print_table();
 }
 
@@ -127,9 +119,8 @@ uint32_t scheduler_loop(uint32_t current_time_ms)
         {
             //printf("scheduler_loop(): running task: %p\n", task_queue[0].task);
             // Call the task
-            // TODO add lock, to keep first item untouched, if task itself adds new task
             uint32_t current_task_next_run_ms = task_queue[0].task();
-            if (current_task_next_run_ms == 0)
+            if (current_task_next_run_ms == SCHEDULER_STOP_TASK)
             {
                 // Remove task
                 scheduler_remove_first_task();
