@@ -1,4 +1,27 @@
 #include <Arduino.h>
+#include <scheduler.h>
+
+int blink_task(void)
+{
+    static bool is_led_on = false;
+    int time_for_next_call = 0;
+
+    is_led_on = !is_led_on;
+    if (is_led_on)
+    {
+        digitalWrite(LED_BUILTIN, LOW);
+        Serial.println("led on");
+        time_for_next_call = 50;
+    }
+    else
+    {
+        digitalWrite(LED_BUILTIN, HIGH);
+        Serial.println("led off");
+        time_for_next_call = 500;
+    }
+
+    return time_for_next_call;
+}
 
 void setup()
 {
@@ -6,14 +29,12 @@ void setup()
 
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
+
+    (void)scheduler_loop(millis());
+    scheduler_add_task(blink_task, 0);
 }
 
 void loop()
 {
-    digitalWrite(LED_BUILTIN, LOW);
-    Serial.println("led on");
-    delay(1000);
-    digitalWrite(LED_BUILTIN, HIGH);
-    Serial.println("led off");
-    delay(1000);
+    scheduler_loop(millis());
 }
