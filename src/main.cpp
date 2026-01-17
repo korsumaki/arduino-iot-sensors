@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <scheduler.h>
+#include <temperature_sensor.h>
 
 int blink_task(void)
 {
@@ -26,12 +27,16 @@ int blink_task(void)
 void setup()
 {
     Serial.begin(115200);
+    (void)scheduler_loop(millis());
+
+    temperature_sensor_init();
 
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
 
-    (void)scheduler_loop(millis());
     scheduler_add_task(blink_task, 0);
+
+    temperature_sensor_measure();
 }
 
 void loop()
