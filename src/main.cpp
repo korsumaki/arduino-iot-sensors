@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <scheduler.h>
 #include <temperature_sensor.h>
+#include <humidity_sensor.h>
 
 int blink_task(void)
 {
@@ -30,6 +31,7 @@ void setup()
     (void)scheduler_loop(millis());
 
     temperature_sensor_init();
+    humidity_sensor_init();
 
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
@@ -37,6 +39,7 @@ void setup()
     scheduler_add_task(blink_task, 0);
 
     temperature_sensor_measure();
+    humidity_sensor_measure();
 }
 
 void loop()
