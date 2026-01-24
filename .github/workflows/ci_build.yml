@@ -1,5 +1,5 @@
 name: PlatformIO CI
-
+run-name: ${{ github.actor }} started unit test and build
 on: [push]
 
 jobs:
@@ -20,5 +20,7 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
-      - name: Build PlatformIO Project
-        run: pio run
+      - name: Run unit tests (native platform)
+        run: pio test -e native
+      - name: Build Project (di_mini platform)
+        run: pio run -e di_mini
