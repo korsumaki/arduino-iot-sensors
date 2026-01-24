@@ -1,5 +1,5 @@
 name: PlatformIO CI
-run-name: ${{ github.actor }} started unit test and build
+
 on: [push]
 
 jobs:
@@ -23,4 +23,4 @@ jobs:
       - name: Run unit tests (native platform)
         run: pio test -e native
       - name: Build Project (di_mini platform)
-        run: pio run -e di_mini
+        run: pio run -e d1_mini
