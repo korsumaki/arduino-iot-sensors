@@ -36,9 +36,9 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, HIGH);
 
-    scheduler_add_task(blink_task, 0);
+    //scheduler_add_task(blink_task, 0);
 
-    temperature_sensor_measure();
+    //temperature_sensor_measure();
     humidity_sensor_measure();
 }
 

@@ -67,35 +67,45 @@ BME280I2C bme(settings);    // Default : forced mode, standby time = 1000 ms
 //////////////////////////////////////////////////////////////////
 void printBME280Data(void)
 {
-   float temp(NAN), hum(NAN), pres(NAN);
+    float temp(NAN), hum(NAN), pres(NAN);
 
-   BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-   BME280::PresUnit presUnit(BME280::PresUnit_hPa);
+    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+    BME280::PresUnit presUnit(BME280::PresUnit_hPa);
 
-   bme.read(pres, temp, hum, tempUnit, presUnit);
+    bme.read(pres, temp, hum, tempUnit, presUnit);
+#if 0
+    Serial.print("Temp: ");
+    Serial.print(temp);
+    Serial.print("°"+ String(tempUnit == BME280::TempUnit_Celsius ? 'C' :'F'));
+    Serial.print("\t\tHumidity: ");
+    Serial.print(hum);
+    Serial.print("% RH");
+    Serial.print("\t\tPressure: ");
+    Serial.print(pres);
+    //Serial.println("hPa");
+    Serial.print(" hPa\t");
 
-   Serial.print("Temp: ");
-   Serial.print(temp);
-   Serial.print("°"+ String(tempUnit == BME280::TempUnit_Celsius ? 'C' :'F'));
-   Serial.print("\t\tHumidity: ");
-   Serial.print(hum);
-   Serial.print("% RH");
-   Serial.print("\t\tPressure: ");
-   Serial.print(pres);
-   //Serial.println("hPa");
-   Serial.print(" hPa\t");
+    float height = (1018.05f-pres)*8.0f * 100.0f;
+    Serial.print(height);
+    Serial.println(" cm");
+#endif
 
-   float height = (1018.05f-pres)*8.0f * 100.0f;
-   Serial.print(height);
-   Serial.println(" cm");
 
-   //delay(100);
+    Serial.print(millis());
+    Serial.print(";");
+    Serial.print((int)(hum*1000));
+    Serial.print(";");
+    Serial.print((int)(pres*1000));
+    Serial.print(";");
+
+    float height = (1018.30f-pres)*8.0f * 1000.0f;
+    Serial.println((int)height);
 }
 
 static int humidity_sensor_meas_task(void)
 {
     printBME280Data();
-    int time_for_next_call = 200;
+    int time_for_next_call = 100;
     return time_for_next_call;
 }
 
