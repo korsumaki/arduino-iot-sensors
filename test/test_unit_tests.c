@@ -1,5 +1,7 @@
 #include "unity.h"
 #include <scheduler.h>
+#include <value_analysis.h>
+
 #include <stdio.h>
 
 uint32_t call_counter__task_interval_3 = 0;
@@ -367,6 +369,48 @@ void test_scheduler_loop__task_add_new_task(void)
 // TODO tests
 // - task add itself new task to scheduler -> verify that tasks does not break, when updating table during execution
 
+// =============================
+// Test cases for Value analysis
+// =============================
+
+void test_value_analysis_simple(void)
+{
+    const int TIME_10_SEC_ms = 10*1000;
+    const int TIME_1_SEC_ms = 1000;
+
+    value_analysis_t analysis = { 0 };
+    TEST_ASSERT_EQUAL(0, analysis.latest_value);
+
+    //void value_analysis_add_value(value_analysis_t *analysis, float value, int current_time);
+    //float value_analysis_get_change(value_analysis_t *analysis, int time_span_ms);
+
+    value_analysis_add_value(&analysis, 5.0, 1000);
+    TEST_ASSERT_EQUAL_FLOAT(0, value_analysis_get_change(&analysis, TIME_1_SEC_ms) ); // Change is zero when only one measurement added
+
+    value_analysis_add_value(&analysis, 6.0, 2000);
+    TEST_ASSERT_EQUAL_FLOAT(1, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+
+    value_analysis_add_value(&analysis, 7.0, 2500);
+    TEST_ASSERT_EQUAL_FLOAT(2, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+
+    value_analysis_add_value(&analysis, 7.1, 3000);
+    TEST_ASSERT_EQUAL_FLOAT(0.2, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+
+    value_analysis_add_value(&analysis, 8, 4000);
+    TEST_ASSERT_EQUAL_FLOAT(0.9, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+
+    value_analysis_add_value(&analysis, 7, 4500);
+    TEST_ASSERT_EQUAL_FLOAT(-2.0, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+
+    // Longer time
+    value_analysis_add_value(&analysis, 7.5, 5500); // 1 sec
+    TEST_ASSERT_EQUAL_FLOAT(5.0, value_analysis_get_change(&analysis, TIME_10_SEC_ms) );
+}
+
+
+
+// =============================
+
 int runUnityTests(void)
 {
     UNITY_BEGIN();
@@ -377,6 +421,9 @@ int runUnityTests(void)
     RUN_TEST(test_scheduler_loop__three_tasks);
     RUN_TEST(test_scheduler_loop__called_late);
     RUN_TEST(test_scheduler_loop__task_add_new_task);
+
+    RUN_TEST(test_value_analysis_simple);
+
     return UNITY_END();
 }
 
