@@ -375,36 +375,37 @@ void test_scheduler_loop__task_add_new_task(void)
 
 void test_value_analysis_simple(void)
 {
-    const int TIME_10_SEC_ms = 10*1000;
-    const int TIME_1_SEC_ms = 1000;
+    const int TIME_10_SEC_sec = 10;
+    const int TIME_1_SEC_sec = 1;
 
-    value_analysis_t analysis = { 0 };
+    value_analysis_t analysis;
+    value_analysis_init(&analysis, 1);
     TEST_ASSERT_EQUAL(0, analysis.latest_value);
 
     //void value_analysis_add_value(value_analysis_t *analysis, float value, int current_time);
     //float value_analysis_get_change(value_analysis_t *analysis, int time_span_ms);
 
-    value_analysis_add_value(&analysis, 5.0, 1000);
-    TEST_ASSERT_EQUAL_FLOAT(0, value_analysis_get_change(&analysis, TIME_1_SEC_ms) ); // Change is zero when only one measurement added
+    TEST_ASSERT_EQUAL_FLOAT(0, value_analysis_add_value(&analysis, 5.0, 1000) );
+    TEST_ASSERT_EQUAL_FLOAT(0, value_analysis_get_change(&analysis, TIME_1_SEC_sec) ); // Change is zero when only one measurement added
 
-    value_analysis_add_value(&analysis, 6.0, 2000);
-    TEST_ASSERT_EQUAL_FLOAT(1, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+    TEST_ASSERT_EQUAL_FLOAT(1, value_analysis_add_value(&analysis, 6.0, 2000) );
+    TEST_ASSERT_EQUAL_FLOAT(1, value_analysis_get_change(&analysis, TIME_1_SEC_sec) );
 
-    value_analysis_add_value(&analysis, 7.0, 2500);
-    TEST_ASSERT_EQUAL_FLOAT(2, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+    TEST_ASSERT_EQUAL_FLOAT(2, value_analysis_add_value(&analysis, 7.0, 2500) );
+    TEST_ASSERT_EQUAL_FLOAT(2, value_analysis_get_change(&analysis, TIME_1_SEC_sec) );
 
-    value_analysis_add_value(&analysis, 7.1, 3000);
-    TEST_ASSERT_EQUAL_FLOAT(0.2, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+    TEST_ASSERT_EQUAL_FLOAT(0.2, value_analysis_add_value(&analysis, 7.1, 3000) );
+    TEST_ASSERT_EQUAL_FLOAT(0.2, value_analysis_get_change(&analysis, TIME_1_SEC_sec) );
 
-    value_analysis_add_value(&analysis, 8, 4000);
-    TEST_ASSERT_EQUAL_FLOAT(0.9, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+    TEST_ASSERT_EQUAL_FLOAT(0.9, value_analysis_add_value(&analysis, 8, 4000) );
+    TEST_ASSERT_EQUAL_FLOAT(0.9, value_analysis_get_change(&analysis, TIME_1_SEC_sec) );
 
-    value_analysis_add_value(&analysis, 7, 4500);
-    TEST_ASSERT_EQUAL_FLOAT(-2.0, value_analysis_get_change(&analysis, TIME_1_SEC_ms) );
+    TEST_ASSERT_EQUAL_FLOAT(-2.0, value_analysis_add_value(&analysis, 7, 4500) );
+    TEST_ASSERT_EQUAL_FLOAT(-2.0, value_analysis_get_change(&analysis, TIME_1_SEC_sec) );
 
-    // Longer time
-    value_analysis_add_value(&analysis, 7.5, 5500); // 1 sec
-    TEST_ASSERT_EQUAL_FLOAT(5.0, value_analysis_get_change(&analysis, TIME_10_SEC_ms) );
+    TEST_ASSERT_EQUAL_FLOAT(0.5, value_analysis_add_value(&analysis, 7.5, 5500) ); // 1 sec
+    // Get function can return different time periods than what was initialized
+    TEST_ASSERT_EQUAL_FLOAT(5.0, value_analysis_get_change(&analysis, TIME_10_SEC_sec) );
 }
 
 
