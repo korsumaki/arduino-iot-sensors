@@ -1,6 +1,7 @@
 #include "unity.h"
 #include <scheduler.h>
 #include <value_analysis.h>
+#include <screen.h>
 
 #include <stdio.h>
 
@@ -408,6 +409,53 @@ void test_value_analysis_simple(void)
     TEST_ASSERT_EQUAL_FLOAT(5.0, value_analysis_get_change(&analysis, TIME_10_SEC_sec) );
 }
 
+// =============================
+// Test cases for Screen
+// =============================
+
+const char * screen1(void)
+{
+    return "screen 1";
+}
+const char * screen2(void)
+{
+    return "screen 2";
+}
+
+char screen_dynamic_buffer[20] = "";
+const char * screen_dynamic(void)
+{
+    static int call_count = 0;
+    sprintf(screen_dynamic_buffer, "Dynamic %d", call_count);
+    call_count++;
+    return screen_dynamic_buffer;
+}
+
+
+void test_screen_init(void)
+{
+    screen_init();
+    TEST_ASSERT_EQUAL(0, screen_get_count());
+    screen_add_screen(screen1);
+    TEST_ASSERT_EQUAL(1, screen_get_count());
+}
+
+void test_screen_loop(void)
+{
+    screen_init();
+    screen_add_screen(screen1);
+    screen_add_screen(screen2);
+    TEST_ASSERT_EQUAL(2, screen_get_count());
+    TEST_ASSERT_EQUAL_STRING("screen 1", screen_get_screen(0));
+    TEST_ASSERT_EQUAL_STRING("screen 2", screen_get_screen(1));
+
+    screen_add_screen(screen_dynamic);
+    TEST_ASSERT_EQUAL(3, screen_get_count());
+    TEST_ASSERT_EQUAL_STRING("Dynamic 0", screen_get_screen(2));
+    TEST_ASSERT_EQUAL_STRING("Dynamic 1", screen_get_screen(2));
+    TEST_ASSERT_EQUAL_STRING("Dynamic 2", screen_get_screen(2));
+    TEST_ASSERT_EQUAL_STRING("Dynamic 3", screen_get_screen(2));
+}
 
 
 // =============================
@@ -424,6 +472,9 @@ int runUnityTests(void)
     RUN_TEST(test_scheduler_loop__task_add_new_task);
 
     RUN_TEST(test_value_analysis_simple);
+
+    RUN_TEST(test_screen_init);
+    RUN_TEST(test_screen_loop);
 
     return UNITY_END();
 }
