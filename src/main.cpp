@@ -2,7 +2,7 @@
 #include <scheduler.h>
 #include <temperature_sensor.h>
 #include <humidity_sensor.h>
-#include <screen.h> // Screen content handling
+#include <content.h> // Screen content handling
 
 
 // Display: ESP8266 and ESP32 OLED driver for SSD1306 displays 
