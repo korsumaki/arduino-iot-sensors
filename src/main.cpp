@@ -44,7 +44,7 @@ void button_b_pressed(void)
     content_scroll_index++;
 }
 
-void display_loop(void)
+static int display_loop_task(void)
 {
     if (is_display_available)
     {
@@ -54,12 +54,14 @@ void display_loop(void)
             content_page_index = 0;
         }
         display.printf("%s", content_get_page(content_page_index));
-        //display.println("IoT mesh 2");
-        //display.printf("%d %d\n", content_page_index, content_scroll_index);
+
+        return 250;
+    }
+    else
+    {
+        return SCHEDULER_STOP_TASK;
     }
 }
-
-
 
 void handle_buttons(void)
 {
@@ -112,12 +114,13 @@ void setup()
 
     //temperature_sensor_measure();
     //humidity_sensor_measure();
+
+    // Add task for display updating
+    scheduler_add_task(display_loop_task, 0);
 }
 
 void loop()
 {
     handle_buttons();
-    display_loop();
-    delay(200);
     scheduler_loop(millis());
 }
