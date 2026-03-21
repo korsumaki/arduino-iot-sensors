@@ -99,7 +99,7 @@ const char * content3(void)
 void setup()
 {
     Serial.begin(115200);
-    (void)scheduler_loop(millis());
+    scheduler_init(millis);
 
     init_display();
     content_init();
@@ -122,5 +122,5 @@ void setup()
 void loop()
 {
     handle_buttons();
-    scheduler_loop(millis());
+    scheduler_loop();
 }

@@ -15,6 +15,14 @@ static scheduler_item_t task_queue[SCHEDULER_TASK_COUNT] = { 0 };
 
 static uint32_t scheduler_current_time_ms = 0;
 
+static millis_func scheduler_millis_func = NULL;
+
+void scheduler_init(millis_func millis_function_impl)
+{
+    scheduler_millis_func = millis_function_impl;
+}
+
+
 void scheduler_clear_all(void)
 {
     for (uint32_t index = 0; index < SCHEDULER_TASK_COUNT; index++)
@@ -108,8 +116,9 @@ void scheduler_add_task(scheduler_task_func task, uint32_t call_after_ms)
     //scheduler_print_table();
 }
 
-uint32_t scheduler_loop(uint32_t current_time_ms)
+uint32_t scheduler_loop(void)
 {
+    uint32_t current_time_ms = scheduler_millis_func();
     uint32_t next_run_ms = 0;
 
     scheduler_current_time_ms = current_time_ms;

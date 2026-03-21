@@ -63,6 +63,14 @@ int task_once(void)
     return 0;
 }
 
+unsigned long time_for_millis = 0;
+
+// Custom millis implementation is used to control time in unit tests.
+static unsigned long custom_millis_impl(void)
+{
+    return time_for_millis;
+}
+
 // =========================
 // Test cases
 // =========================
@@ -74,44 +82,48 @@ void test_scheduler_add_task(void)
 
 void test_scheduler_loop__one_task(void)
 {
-    uint32_t time = 0;
+    scheduler_init(custom_millis_impl);
+    time_for_millis = 0;
+
     uint32_t next_time = 0;
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(0, next_time);
 
     scheduler_add_task(task_interval_5, 0);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
 
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5); // Called first time
     TEST_ASSERT_EQUAL(5, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time);
+    time_for_millis += next_time;
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5); // Called first time
     TEST_ASSERT_EQUAL(5, next_time);
 
-    time += 2; // Shorter time than wanted
-    next_time = scheduler_loop(time);
+    time_for_millis += 2; // Shorter time than wanted
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(3, next_time);
 
-    time += 2; // Shorter time than wanted
-    next_time = scheduler_loop(time);
+    time_for_millis += 2; // Shorter time than wanted
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(1, next_time);
 
-    time += 1;
-    next_time = scheduler_loop(time);
+    time_for_millis += 1;
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(3, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(5, next_time);
 }
 
 void test_scheduler_loop__two_tasks(void)
 {
-    uint32_t time = 0;
+    scheduler_init(custom_millis_impl);
+    time_for_millis = 0;
+
     uint32_t next_time = 0;
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(0, next_time);
 
     scheduler_add_task(task_interval_5, 10); // calls: 10, 15, 20, 25
@@ -119,37 +131,37 @@ void test_scheduler_loop__two_tasks(void)
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7); // Not called yet
 
-    next_time = scheduler_loop(time); // time 0
+    next_time = scheduler_loop(); // time 0
     TEST_ASSERT_EQUAL(2, next_time);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7); // Not called yet
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 2
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 2
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
     TEST_ASSERT_EQUAL(7, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 9
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 9
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_7);
     TEST_ASSERT_EQUAL(1, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 10
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 10
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_7);
     TEST_ASSERT_EQUAL(5, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 15
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 15
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_7);
     TEST_ASSERT_EQUAL(1, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // 16
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // 16
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(3, call_counter__task_interval_7);
     TEST_ASSERT_EQUAL(4, next_time);
@@ -157,9 +169,11 @@ void test_scheduler_loop__two_tasks(void)
 
 void test_scheduler_loop__one_shot_task(void)
 {
-    uint32_t time = 0;
+    scheduler_init(custom_millis_impl);
+    time_for_millis = 0;
+
     uint32_t next_time = 0;
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(0, next_time);
 
     scheduler_add_task(task_interval_5, 1); // calls: 1, 6, 11
@@ -167,25 +181,25 @@ void test_scheduler_loop__one_shot_task(void)
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(0, call_counter__task_once); // Not called yet
 
-    next_time = scheduler_loop(time); // time 0
+    next_time = scheduler_loop(); // time 0
     TEST_ASSERT_EQUAL(1, next_time);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(0, call_counter__task_once); // Not called yet
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 1
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 1
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(0, call_counter__task_once);
     TEST_ASSERT_EQUAL(1, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 2
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 2
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_once);
     TEST_ASSERT_EQUAL(4, next_time);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 6
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 6
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_once);
     TEST_ASSERT_EQUAL(5, next_time);
@@ -193,9 +207,11 @@ void test_scheduler_loop__one_shot_task(void)
 
 void test_scheduler_loop__three_tasks(void)
 {
-    uint32_t time = 0;
+    scheduler_init(custom_millis_impl);
+    time_for_millis = 0;
+
     uint32_t next_time = 0;
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(0, next_time);
 
     scheduler_add_task(task_interval_7, 2); // calls: 2, 9, 16
@@ -205,56 +221,56 @@ void test_scheduler_loop__three_tasks(void)
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7); // Not called yet
 
-    next_time = scheduler_loop(time); // time 0
+    next_time = scheduler_loop(); // time 0
     TEST_ASSERT_EQUAL(1, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 1
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 1
     TEST_ASSERT_EQUAL(1, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 2
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 2
     TEST_ASSERT_EQUAL(1, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 3
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 3
     TEST_ASSERT_EQUAL(3, next_time);
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 6
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 6
     TEST_ASSERT_EQUAL(0, next_time);
     TEST_ASSERT_EQUAL(3, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 6
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 6
     TEST_ASSERT_EQUAL(3, next_time);
     TEST_ASSERT_EQUAL(3, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 9
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 9
     TEST_ASSERT_EQUAL(0, next_time);
     TEST_ASSERT_EQUAL(4, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 9
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 9
     TEST_ASSERT_EQUAL(2, next_time);
     TEST_ASSERT_EQUAL(4, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_5);
@@ -263,9 +279,11 @@ void test_scheduler_loop__three_tasks(void)
 
 void test_scheduler_loop__called_late(void)
 {
-    uint32_t time = 0;
+    scheduler_init(custom_millis_impl);
+    time_for_millis = 0;
+
     uint32_t next_time = 0;
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(0, next_time);
 
     scheduler_add_task(task_interval_7, 2); // calls: 2, 2+9=11
@@ -275,29 +293,29 @@ void test_scheduler_loop__called_late(void)
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5); // Not called yet
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7); // Not called yet
 
-    time = 2;
-    next_time = scheduler_loop(time); // time 2
+    time_for_millis = 2;
+    next_time = scheduler_loop(); // time 2
     TEST_ASSERT_EQUAL(0, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 2
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 2
     TEST_ASSERT_EQUAL(0, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(0, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 2
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 2
     TEST_ASSERT_EQUAL(3, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_7);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 5
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 5
     TEST_ASSERT_EQUAL(2, next_time);
     TEST_ASSERT_EQUAL(2, call_counter__task_interval_3);
     TEST_ASSERT_EQUAL(1, call_counter__task_interval_5);
@@ -321,9 +339,11 @@ int main_task(void)
 
 void test_scheduler_loop__task_add_new_task(void)
 {
-    uint32_t time = 0;
+    scheduler_init(custom_millis_impl);
+    time_for_millis = 0;
+
     uint32_t next_time = 0;
-    next_time = scheduler_loop(time);
+    next_time = scheduler_loop();
     TEST_ASSERT_EQUAL(0, next_time);
 
     scheduler_add_task(main_task, 20);
@@ -337,31 +357,31 @@ void test_scheduler_loop__task_add_new_task(void)
     TEST_ASSERT_EQUAL(0, call_counter__main_task);
     TEST_ASSERT_EQUAL(0, call_counter__sub_task);
 
-    next_time = scheduler_loop(time); // time 0
+    next_time = scheduler_loop(); // time 0
     TEST_ASSERT_EQUAL(20, next_time);
     TEST_ASSERT_EQUAL(0, call_counter__main_task);
     TEST_ASSERT_EQUAL(0, call_counter__sub_task);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 20
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 20
     TEST_ASSERT_EQUAL(2, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__main_task);
     TEST_ASSERT_EQUAL(0, call_counter__sub_task);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 22
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 22
     TEST_ASSERT_EQUAL(8, next_time);
     TEST_ASSERT_EQUAL(1, call_counter__main_task);
     TEST_ASSERT_EQUAL(1, call_counter__sub_task);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 30
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 30
     TEST_ASSERT_EQUAL(2, next_time);
     TEST_ASSERT_EQUAL(2, call_counter__main_task);
     TEST_ASSERT_EQUAL(1, call_counter__sub_task);
 
-    time += next_time;
-    next_time = scheduler_loop(time); // time 32
+    time_for_millis += next_time;
+    next_time = scheduler_loop(); // time 32
     TEST_ASSERT_EQUAL(8, next_time);
     TEST_ASSERT_EQUAL(2, call_counter__main_task);
     TEST_ASSERT_EQUAL(2, call_counter__sub_task);

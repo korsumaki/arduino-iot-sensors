@@ -9,7 +9,18 @@ extern "C" {
 
 typedef int (*scheduler_task_func)(void);
 
+typedef unsigned long (*millis_func)(void);
+
 #define SCHEDULER_STOP_TASK 0
+
+
+/**
+ * Init function to give function pointer to millis() function
+ * 
+ * @param millis_function_impl  Funtion pointer for getting time in milliseconds
+ */
+void scheduler_init(millis_func millis_function_impl);
+
 /**
  * Add task to scheduler queue
  * 
@@ -20,11 +31,10 @@ void scheduler_add_task(scheduler_task_func task, uint32_t call_after_ms);
 
 /**
  * Loop function for scheduler
- * 
- * @param current_time_ms   Current system timestamp in milliseconds
+ *
  * @return time for next event in milliseconds
  */
-uint32_t scheduler_loop(uint32_t current_time_ms);
+uint32_t scheduler_loop(void);
 
 /**
  * Clear all tasks from scheduler
