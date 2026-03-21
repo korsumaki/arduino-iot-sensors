@@ -30,18 +30,18 @@ void init_display(void)
     }
 }
 
-uint8_t screen_page_index = 0;
-uint8_t screen_scroll_index = 0;
+uint8_t content_page_index = 0;
+uint8_t content_scroll_index = 0;
 
 void button_a_pressed(void)
 {
-    screen_page_index++;
-    screen_scroll_index = 0;
+    content_page_index++;
+    content_scroll_index = 0;
 }
 
 void button_b_pressed(void)
 {
-    screen_scroll_index++;
+    content_scroll_index++;
 }
 
 void display_loop(void)
@@ -49,13 +49,13 @@ void display_loop(void)
     if (is_display_available)
     {
         display.cls();
-        if (screen_page_index >= screen_get_count())
+        if (content_page_index >= content_get_page_count())
         {
-            screen_page_index = 0;
+            content_page_index = 0;
         }
-        display.printf("%s", screen_get_screen(screen_page_index));
+        display.printf("%s", content_get_page(content_page_index));
         //display.println("IoT mesh 2");
-        //display.printf("%d %d\n", screen_page_index, screen_scroll_index);
+        //display.printf("%d %d\n", content_page_index, content_scroll_index);
     }
 }
 
@@ -80,15 +80,15 @@ void handle_buttons(void)
 }
 
 
-const char * screen1(void)
+const char * content1(void)
 {
     return "Temperature\n12.4 C";
 }
-const char * screen2(void)
+const char * content2(void)
 {
     return "Humidity\n65%%";
 }
-const char * screen3(void)
+const char * content3(void)
 {
     return "Mesh";
 }
@@ -100,10 +100,10 @@ void setup()
     (void)scheduler_loop(millis());
 
     init_display();
-    screen_init();
-    screen_add_screen(screen1);
-    screen_add_screen(screen2);
-    screen_add_screen(screen3);
+    content_init();
+    content_add_page(content1);
+    content_add_page(content2);
+    content_add_page(content3);
 
     //temperature_sensor_init();
     //humidity_sensor_init();

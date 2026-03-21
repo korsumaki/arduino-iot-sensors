@@ -3,40 +3,40 @@
 //#include "assert.h"
 //#include <stdio.h>
 
-#define SCREEN_COUNT_MAX 5
+#define CONTENT_PAGE_COUNT_MAX 10
 
-static screen_func screen_list[SCREEN_COUNT_MAX] = { 0 };
+static content_func content_page_list[CONTENT_PAGE_COUNT_MAX] = { 0 };
 
 
-void screen_init(void)
+void content_init(void)
 {
-    for (int i = 0; i<SCREEN_COUNT_MAX; ++i)
+    for (int i = 0; i<CONTENT_PAGE_COUNT_MAX; ++i)
     {
-        screen_list[i] = NULL;
+        content_page_list[i] = NULL;
     }
 }
 
-int screen_get_count(void)
+int content_get_page_count(void)
 {
     int index = 0;
-    while (screen_list[index] != NULL)
+    while (content_page_list[index] != NULL)
     {
         ++index;
     }
     return index;
 }
 
-void screen_add_screen(screen_func screen)
+void content_add_page(content_func page)
 {
-    int next_free_slot = screen_get_count();
-    screen_list[next_free_slot] = screen;
+    int next_free_slot = content_get_page_count();
+    content_page_list[next_free_slot] = page;
 }
 
-const char * screen_get_screen(int screen_index)
+const char * content_get_page(int page_index)
 {
-    if (screen_index < screen_get_count())
+    if (page_index < content_get_page_count())
     {
-        return screen_list[screen_index]();
+        return content_page_list[page_index]();
     }
     return "Not found";
 }

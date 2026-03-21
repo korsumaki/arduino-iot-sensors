@@ -410,51 +410,51 @@ void test_value_analysis_simple(void)
 }
 
 // =============================
-// Test cases for Screen
+// Test cases for Content
 // =============================
 
-const char * screen1(void)
+const char * content1(void)
 {
-    return "screen 1";
+    return "content 1";
 }
-const char * screen2(void)
+const char * content2(void)
 {
-    return "screen 2";
+    return "content 2";
 }
 
-char screen_dynamic_buffer[20] = "";
-const char * screen_dynamic(void)
+char content_dynamic_buffer[20] = "";
+const char * content_dynamic(void)
 {
     static int call_count = 0;
-    sprintf(screen_dynamic_buffer, "Dynamic %d", call_count);
+    sprintf(content_dynamic_buffer, "Dynamic %d", call_count);
     call_count++;
-    return screen_dynamic_buffer;
+    return content_dynamic_buffer;
 }
 
 
-void test_screen_init(void)
+void test_content_init(void)
 {
-    screen_init();
-    TEST_ASSERT_EQUAL(0, screen_get_count());
-    screen_add_screen(screen1);
-    TEST_ASSERT_EQUAL(1, screen_get_count());
+    content_init();
+    TEST_ASSERT_EQUAL(0, content_get_page_count());
+    content_add_page(content1);
+    TEST_ASSERT_EQUAL(1, content_get_page_count());
 }
 
-void test_screen_loop(void)
+void test_content_loop(void)
 {
-    screen_init();
-    screen_add_screen(screen1);
-    screen_add_screen(screen2);
-    TEST_ASSERT_EQUAL(2, screen_get_count());
-    TEST_ASSERT_EQUAL_STRING("screen 1", screen_get_screen(0));
-    TEST_ASSERT_EQUAL_STRING("screen 2", screen_get_screen(1));
+    content_init();
+    content_add_page(content1);
+    content_add_page(content2);
+    TEST_ASSERT_EQUAL(2, content_get_page_count());
+    TEST_ASSERT_EQUAL_STRING("content 1", content_get_page(0));
+    TEST_ASSERT_EQUAL_STRING("content 2", content_get_page(1));
 
-    screen_add_screen(screen_dynamic);
-    TEST_ASSERT_EQUAL(3, screen_get_count());
-    TEST_ASSERT_EQUAL_STRING("Dynamic 0", screen_get_screen(2));
-    TEST_ASSERT_EQUAL_STRING("Dynamic 1", screen_get_screen(2));
-    TEST_ASSERT_EQUAL_STRING("Dynamic 2", screen_get_screen(2));
-    TEST_ASSERT_EQUAL_STRING("Dynamic 3", screen_get_screen(2));
+    content_add_page(content_dynamic);
+    TEST_ASSERT_EQUAL(3, content_get_page_count());
+    TEST_ASSERT_EQUAL_STRING("Dynamic 0", content_get_page(2));
+    TEST_ASSERT_EQUAL_STRING("Dynamic 1", content_get_page(2));
+    TEST_ASSERT_EQUAL_STRING("Dynamic 2", content_get_page(2));
+    TEST_ASSERT_EQUAL_STRING("Dynamic 3", content_get_page(2));
 }
 
 
@@ -473,8 +473,8 @@ int runUnityTests(void)
 
     RUN_TEST(test_value_analysis_simple);
 
-    RUN_TEST(test_screen_init);
-    RUN_TEST(test_screen_loop);
+    RUN_TEST(test_content_init);
+    RUN_TEST(test_content_loop);
 
     return UNITY_END();
 }

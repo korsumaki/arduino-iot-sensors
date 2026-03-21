@@ -1,5 +1,5 @@
-#ifndef SCREEN_H
-#define SCREEN_H
+#ifndef CONTENT_H
+#define CONTENT_H
 
 //#include <stdint.h>
 
@@ -7,18 +7,18 @@
 extern "C" {
 #endif
 
-typedef const char * (*screen_func)(void);
+typedef const char * (*content_func)(void);
 
-void screen_init(void);
+void content_init(void);
 
-int screen_get_count(void);
+int content_get_page_count(void);
 
-void screen_add_screen(screen_func screen);
+void content_add_page(content_func page);
 
-const char * screen_get_screen(int screen_index);
+const char * content_get_page(int page_index);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // SCREEN_H
+#endif // CONTENT_H
