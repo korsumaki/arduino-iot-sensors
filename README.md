@@ -31,27 +31,23 @@ Setup Meshtastic node with following settings
 ### Modules
 
 * debug screen
-    - pages for temp, humidity, voltage, mesh
-    - Button A to next page
+    - +pages for temp, humidity, voltage, mesh
+    - +Button A to next page
     - Button B to scroll current page
 * voltage measurement
-
-* Preparation for MKO-01 HW
-    - HW verifcation
-    - 
 
 ### Main / Business logic
 
 - boot logic
     - delay before uart traffic
     - check meshtastic node readiness with timer
-- measurement sequence
+- +measurement sequence
 - sending uart messages
 
 ### Current consumption
 
 - Initial consumption
-    - estimate based on datasheets and component values
-    - measure actual consumption
+    - +estimate based on datasheets and component values
+    - +measure actual consumption
 - Use sleep mode for Wemos
 - Next changes for MKO-01

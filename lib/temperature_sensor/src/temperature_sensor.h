@@ -20,6 +20,11 @@ void temperature_sensor_init(void);
  */
 void temperature_sensor_measure(void);
 
+/**
+ * Get latest temperature in Celcius
+ */
+float temperature_get(void);
+
 
 #ifdef __cplusplus
 }

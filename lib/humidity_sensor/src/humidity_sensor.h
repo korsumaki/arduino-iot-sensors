@@ -17,6 +17,15 @@ void humidity_sensor_init(void);
  */
 void humidity_sensor_measure(void);
 
+/**
+ * Get latest humidity sensor values
+ *
+ * @param pressure (out)    Air pressure value in hPa
+ * @param temp (out)        Temperature value in Celsius
+ * @param humidity (out)    Humidity value
+ */
+void humidity_sensor_get(float& pressure, float& temp, float& humidity);
+
 
 #ifdef __cplusplus
 }

@@ -55,7 +55,7 @@ static int display_loop_task(void)
         }
         display.printf("%s", content_get_page(content_page_index));
 
-        return 250;
+        return 500;
     }
     else
     {
@@ -84,15 +84,40 @@ void handle_buttons(void)
 
 const char * content1(void)
 {
-    return "Temperature\n12.4 C";
+    static char screen_content_buffer[200] = { 0 };
+    sprintf(screen_content_buffer, "Temperature:\n%.3f", temperature_get());
+    return screen_content_buffer;
 }
 const char * content2(void)
 {
-    return "Humidity\n65%%";
+    float pressure;
+    float temp;
+    float humidity;
+    humidity_sensor_get(pressure, temp, humidity);
+
+    static char screen_content_buffer[200] = { 0 };
+    sprintf(screen_content_buffer, "%.2f%%\n%0.2fhPa\n%0.2f C", humidity, pressure, temp);
+    return screen_content_buffer;
 }
 const char * content3(void)
 {
+    return "Voltage/n- V";
+}
+
+const char * content4(void)
+{
     return "Mesh";
+}
+
+#define MEASUREMENT_SEQUENCE_INTERVAL_ms (2*1000) // development
+//#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
+
+static int measure_sequence_task(void)
+{
+    temperature_sensor_measure();
+    humidity_sensor_measure();
+
+    return MEASUREMENT_SEQUENCE_INTERVAL_ms;
 }
 
 
@@ -106,17 +131,14 @@ void setup()
     content_add_page(content1);
     content_add_page(content2);
     content_add_page(content3);
+    content_add_page(content4);
 
-    //temperature_sensor_init();
-    //humidity_sensor_init();
-
-    //scheduler_add_task(blink_task, 0);
-
-    //temperature_sensor_measure();
-    //humidity_sensor_measure();
+    temperature_sensor_init();
+    humidity_sensor_init();
 
     // Add task for display updating
     scheduler_add_task(display_loop_task, 0);
+    scheduler_add_task(measure_sequence_task, 100);
 }
 
 void loop()

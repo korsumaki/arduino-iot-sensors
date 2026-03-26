@@ -11,6 +11,12 @@ OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature sensors(&oneWire);
 
+static float tempC = DEVICE_DISCONNECTED_C;
+
+float temperature_get(void)
+{
+    return tempC;
+}
 
 static int temperature_sensor_meas_task(void)
 {
@@ -28,7 +34,7 @@ static int temperature_sensor_meas_task(void)
     else
     {
         is_temperature_requested = false;
-        float tempC = sensors.getTempCByIndex(0);
+        tempC = sensors.getTempCByIndex(0);
 
         // Check if reading was successful
         if (tempC != DEVICE_DISCONNECTED_C)
@@ -40,7 +46,7 @@ static int temperature_sensor_meas_task(void)
         {
             Serial.println("Error: Could not read temperature data");
         }
-        time_for_next_call = 3000;
+        time_for_next_call = SCHEDULER_STOP_TASK;
     }
 
     return time_for_next_call;
@@ -55,5 +61,5 @@ void temperature_sensor_init(void)
 void temperature_sensor_measure(void)
 {
     // Add task to scheduler, to start temperature measurement
-    scheduler_add_task(temperature_sensor_meas_task, 1000);
+    scheduler_add_task(temperature_sensor_meas_task, 0);
 }

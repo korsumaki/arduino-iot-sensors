@@ -65,48 +65,48 @@ BME280I2C::Settings settings( // Indoor Navigation settings
 BME280I2C bme(settings);    // Default : forced mode, standby time = 1000 ms
                   // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
 //////////////////////////////////////////////////////////////////
-void printBME280Data(void)
+
+static float temperature = NAN;
+static float humidity = NAN;
+static float pressure = NAN;
+
+void humidity_sensor_get
+(
+   float& pres,
+   float& temp,
+   float& hum
+)
 {
-    float temp(NAN), hum(NAN), pres(NAN);
+    temp = temperature;
+    hum = humidity;
+    pres = pressure;
+}
 
-    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-    BME280::PresUnit presUnit(BME280::PresUnit_hPa);
 
-    bme.read(pres, temp, hum, tempUnit, presUnit);
-#if 0
+//void printBME280Data(void)
+void printBME280Data(float pres, float temp, float hum)
+{
     Serial.print("Temp: ");
     Serial.print(temp);
-    Serial.print("°"+ String(tempUnit == BME280::TempUnit_Celsius ? 'C' :'F'));
+    Serial.print("°C");
     Serial.print("\t\tHumidity: ");
     Serial.print(hum);
     Serial.print("% RH");
     Serial.print("\t\tPressure: ");
     Serial.print(pres);
-    //Serial.println("hPa");
-    Serial.print(" hPa\t");
-
-    float height = (1018.05f-pres)*8.0f * 100.0f;
-    Serial.print(height);
-    Serial.println(" cm");
-#endif
-
-
-    Serial.print(millis());
-    Serial.print(";");
-    Serial.print((int)(hum*1000));
-    Serial.print(";");
-    Serial.print((int)(pres*1000));
-    Serial.print(";");
-
-    float height = (1018.30f-pres)*8.0f * 1000.0f;
-    Serial.println((int)height);
+    Serial.println(" hPa");
 }
 
 static int humidity_sensor_meas_task(void)
 {
-    printBME280Data();
-    int time_for_next_call = 100;
-    return time_for_next_call;
+    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+    BME280::PresUnit presUnit(BME280::PresUnit_hPa);
+
+    bme.read(pressure, temperature, humidity, tempUnit, presUnit);
+
+    printBME280Data(pressure, temperature, humidity);
+
+    return SCHEDULER_STOP_TASK;
 }
 
 void humidity_sensor_init(void)
@@ -114,10 +114,10 @@ void humidity_sensor_init(void)
     // BME280 stuff
     Wire.begin();
 
-    while(!bme.begin())
+    if(!bme.begin())
     {
         Serial.println("Could not find BME280 sensor!");
-        delay(1000);
+        return;
     }
 
     switch(bme.chipModel())
@@ -136,5 +136,5 @@ void humidity_sensor_init(void)
 void humidity_sensor_measure(void)
 {
     // Add task to scheduler, to start humidity measurement
-    scheduler_add_task(humidity_sensor_meas_task, 1000);
+    scheduler_add_task(humidity_sensor_meas_task, 0);
 }
