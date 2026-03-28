@@ -10,6 +10,11 @@
 #include <LOLIN_I2C_BUTTON.h>
 #include "SSD1306Wire.h"
 
+
+#define MEASUREMENT_SEQUENCE_INTERVAL_ms (2*1000) // development
+//#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
+
+
 // Initialize the OLED display using Wire library
 SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_64_48);
 
@@ -82,38 +87,88 @@ void handle_buttons(void)
 }
 
 
-const char * content1(void)
+const char * content_temperature(void)
 {
-    static char screen_content_buffer[200] = { 0 };
-    sprintf(screen_content_buffer, "Temperature:\n%.3f", temperature_get());
+    static char screen_content_buffer[100] = { 0 };
+    sprintf(screen_content_buffer, "Temperature:\n%.2f C ", temperature_get());
     return screen_content_buffer;
 }
-const char * content2(void)
+const char * content_humidity(void)
 {
     float pressure;
     float temp;
     float humidity;
     humidity_sensor_get(pressure, temp, humidity);
 
-    static char screen_content_buffer[200] = { 0 };
-    sprintf(screen_content_buffer, "%.2f%%\n%0.2fhPa\n%0.2f C", humidity, pressure, temp);
+    static char screen_content_buffer[100] = { 0 };
+    sprintf(screen_content_buffer, "%.2f%%\n%0.2f hPa\n%0.2f C ", humidity, pressure, temp);
     return screen_content_buffer;
 }
-const char * content3(void)
+
+int adc_value = 0; // TODO temporary
+float adc_voltage = NAN; // TODO temporary
+
+static float supply_voltage = NAN;
+
+const char * content_voltage(void)
 {
-    return "Voltage/n- V";
+    static char screen_content_buffer[100] = { 0 };
+    sprintf(screen_content_buffer, "Voltage:\n%0.2f V\n%d, %0.3f ", supply_voltage, adc_value, adc_voltage);
+    //sprintf(screen_content_buffer, "Voltage:\n%0.2f V ", supply_voltage);
+    return screen_content_buffer;
 }
 
-const char * content4(void)
+const char * content_node(void)
 {
+    // connected, sent packets, received packets
     return "Mesh";
 }
 
-#define MEASUREMENT_SEQUENCE_INTERVAL_ms (2*1000) // development
-//#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
+const char * content_interval(void)
+{
+    static char screen_content_buffer[100] = { 0 };
+
+    float interval_sec = MEASUREMENT_SEQUENCE_INTERVAL_ms/1000;
+    if (interval_sec < 60)
+    {
+        sprintf(screen_content_buffer, "Interval:\n%.2f sec ", interval_sec);
+    }
+    else if (interval_sec < 60*60)
+    {
+        sprintf(screen_content_buffer, "Interval:\n%.2f min ", (interval_sec/60.0f));
+    }
+    else
+    {
+        sprintf(screen_content_buffer, "Interval:\n%.2f h ", (interval_sec/(60.0f*60.0f)));
+    }
+
+    return screen_content_buffer;
+}
+
+// MKO-01 rev0
+#define VOLTAGE_MEAS_UPPER_RESISITOR (470.0f) // 470k
+#define VOLTAGE_MEAS_LOWER_RESISITOR (100.0f) // 100k
+
+float voltage_meas(void)
+{
+    // Constants
+    const float V_REF = 3.3;     // Analog reference voltage (e.g., 5V or 3.3V)
+    const float R_BITS = 10.0;   // ADC resolution (bits)
+    const float ADC_STEPS = (1 << int(R_BITS)) - 1; // Number of steps (2^R_BITS - 1)
+
+    /*int*/ adc_value = analogRead(A0);
+    /*float*/ adc_voltage = (adc_value / ADC_STEPS) * V_REF; // Convert to voltage
+
+    supply_voltage = adc_voltage * (VOLTAGE_MEAS_UPPER_RESISITOR+VOLTAGE_MEAS_LOWER_RESISITOR) / VOLTAGE_MEAS_LOWER_RESISITOR;
+
+    Serial.printf("adc=%d, voltage=%f, supply_voltage=%f\n", adc_value, adc_voltage, supply_voltage);
+
+    return supply_voltage;
+}
 
 static int measure_sequence_task(void)
 {
+    voltage_meas();
     temperature_sensor_measure();
     humidity_sensor_measure();
 
@@ -128,10 +183,11 @@ void setup()
 
     init_display();
     content_init();
-    content_add_page(content1);
-    content_add_page(content2);
-    content_add_page(content3);
-    content_add_page(content4);
+    content_add_page(content_temperature);
+    content_add_page(content_humidity);
+    content_add_page(content_voltage);
+    content_add_page(content_node);
+    content_add_page(content_interval);
 
     temperature_sensor_init();
     humidity_sensor_init();
