@@ -31,17 +31,13 @@ Setup Meshtastic node with following settings
 ### Modules
 
 * debug screen
-    - +pages for temp, humidity, voltage, mesh
-    - +Button A to next page
     - Button B to scroll current page
-* voltage measurement
 
 ### Main / Business logic
 
 - boot logic
     - delay before uart traffic
     - check meshtastic node readiness with timer
-- +measurement sequence
 - sending uart messages
 
 ### Current consumption

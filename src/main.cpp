@@ -2,6 +2,7 @@
 #include <scheduler.h>
 #include <temperature_sensor.h>
 #include <humidity_sensor.h>
+#include <voltage.h>
 #include <content.h> // Screen content handling
 
 
@@ -105,14 +106,11 @@ const char * content_humidity(void)
     return screen_content_buffer;
 }
 
-int adc_value = 0; // TODO temporary
-float adc_voltage = NAN; // TODO temporary
-
-static float supply_voltage = NAN;
-
 const char * content_voltage(void)
 {
     static char screen_content_buffer[100] = { 0 };
+
+    float supply_voltage = voltage_get();
     sprintf(screen_content_buffer, "Voltage:\n%0.2f V\n%d, %0.3f ", supply_voltage, adc_value, adc_voltage);
     //sprintf(screen_content_buffer, "Voltage:\n%0.2f V ", supply_voltage);
     return screen_content_buffer;
@@ -145,30 +143,10 @@ const char * content_interval(void)
     return screen_content_buffer;
 }
 
-// MKO-01 rev0
-#define VOLTAGE_MEAS_UPPER_RESISITOR (470.0f) // 470k
-#define VOLTAGE_MEAS_LOWER_RESISITOR (100.0f) // 100k
-
-float voltage_meas(void)
-{
-    // Constants
-    const float V_REF = 3.3;     // Analog reference voltage (e.g., 5V or 3.3V)
-    const float R_BITS = 10.0;   // ADC resolution (bits)
-    const float ADC_STEPS = (1 << int(R_BITS)) - 1; // Number of steps (2^R_BITS - 1)
-
-    /*int*/ adc_value = analogRead(A0);
-    /*float*/ adc_voltage = (adc_value / ADC_STEPS) * V_REF; // Convert to voltage
-
-    supply_voltage = adc_voltage * (VOLTAGE_MEAS_UPPER_RESISITOR+VOLTAGE_MEAS_LOWER_RESISITOR) / VOLTAGE_MEAS_LOWER_RESISITOR;
-
-    Serial.printf("adc=%d, voltage=%f, supply_voltage=%f\n", adc_value, adc_voltage, supply_voltage);
-
-    return supply_voltage;
-}
 
 static int measure_sequence_task(void)
 {
-    voltage_meas();
+    voltage_measure();
     temperature_sensor_measure();
     humidity_sensor_measure();
 
