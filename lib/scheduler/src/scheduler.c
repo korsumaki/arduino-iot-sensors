@@ -3,7 +3,7 @@
 #include "assert.h"
 //#include <stdio.h>
 
-#define SCHEDULER_TASK_COUNT 5
+#define SCHEDULER_TASK_COUNT 10
 
 typedef struct 
 {
@@ -11,7 +11,7 @@ typedef struct
     scheduler_task_func task;
 } scheduler_item_t;
 
-static scheduler_item_t task_queue[SCHEDULER_TASK_COUNT] = { 0 };
+static scheduler_item_t task_queue[SCHEDULER_TASK_COUNT+1] = { 0 };
 
 static uint32_t scheduler_current_time_ms = 0;
 
