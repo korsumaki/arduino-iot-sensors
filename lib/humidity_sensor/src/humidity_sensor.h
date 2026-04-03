@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 /**
- * Initialize hunidity sensor driver
+ * Initialize humidity sensor driver
  */
 void humidity_sensor_init(void);
 
