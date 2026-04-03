@@ -4,6 +4,7 @@
 #include <humidity_sensor.h>
 #include <voltage.h>
 #include <content.h> // Screen content handling
+#include <node.h>
 
 
 // Display: ESP8266 and ESP32 OLED driver for SSD1306 displays 
@@ -116,10 +117,28 @@ const char * content_voltage(void)
     return screen_content_buffer;
 }
 
+bool node_init_called = false;
+
 const char * content_node(void)
 {
-    // connected, sent packets, received packets
-    return "Mesh";
+    static char screen_content_buffer[100] = { 0 };
+    const char * node_state = "not started";
+    if (node_init_called)
+    {
+        if (node_is_connected())
+        {
+            node_state = "connected";
+        }
+        else
+        {
+            node_state = "init";
+        }
+    }
+    sprintf(screen_content_buffer, "Node %s\nsent: %d\nrecv: %d ",
+        node_state,
+        node_get_sent_count(),
+        node_get_received_count());
+    return screen_content_buffer;
 }
 
 const char * content_interval(void)
@@ -153,6 +172,32 @@ static int measure_sequence_task(void)
     return MEASUREMENT_SEQUENCE_INTERVAL_ms;
 }
 
+static int node_start_task(void)
+{
+    static uint8_t state = 0;
+    int time_for_next_call = SCHEDULER_STOP_TASK;
+    switch (state)
+    {
+    case 0: // from start, wait >10 sec before node_init()
+        state = 1;
+        time_for_next_call = 12*1000;
+        break;
+    case 1: // node_init()
+        state = 2;
+        node_init();
+        node_init_called = true;
+        time_for_next_call = 1;
+        break;
+    case 2: // node_loop()
+        node_loop();
+        time_for_next_call = 2;
+        break;
+    default:
+        break;
+    }
+    return time_for_next_call;
+}
+
 
 void setup()
 {
@@ -161,10 +206,10 @@ void setup()
 
     init_display();
     content_init();
+    content_add_page(content_node);
     content_add_page(content_temperature);
     content_add_page(content_humidity);
     content_add_page(content_voltage);
-    content_add_page(content_node);
     content_add_page(content_interval);
 
     temperature_sensor_init();
@@ -173,6 +218,7 @@ void setup()
     // Add task for display updating
     scheduler_add_task(display_loop_task, 0);
     scheduler_add_task(measure_sequence_task, 100);
+    scheduler_add_task(node_start_task, 0);
 }
 
 void loop()

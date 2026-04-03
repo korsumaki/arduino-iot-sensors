@@ -20,9 +20,9 @@ Wemos d1 mini arduino is measuring temperature and humidity sensors, do some ana
 Setup Meshtastic node with following settings
 
 * Enable Serial module
-    - RX pin: 
-    - TX pin:
-    - Serial baud rate: 
+    - RX pin: D7
+    - TX pin: D6
+    - Serial baud rate: 57600
     - Serial mode: proto
 * 
 
