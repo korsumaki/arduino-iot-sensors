@@ -13,8 +13,8 @@
 #include "SSD1306Wire.h"
 
 
-#define MEASUREMENT_SEQUENCE_INTERVAL_ms (2*1000) // development
-//#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
+//#define MEASUREMENT_SEQUENCE_INTERVAL_ms (5*1000) // development
+#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
 
 
 // Initialize the OLED display using Wire library
@@ -162,6 +162,64 @@ const char * content_interval(void)
     return screen_content_buffer;
 }
 
+static int measurement_analysis_task(void)
+{
+    char screen_content_buffer[150] = { 0 };
+    static int msg_counter = 0;
+
+    // ==================================
+    // get values
+    float temperature = temperature_get();
+
+    float pressure;
+    float temp;
+    float humidity;
+    humidity_sensor_get(pressure, temp, humidity);
+
+    float supply_voltage = voltage_get();
+
+    // ==================================
+    // do analysis
+
+    // ==================================
+    // create string
+    int index = 0;
+
+    msg_counter++;
+    index += sprintf(&screen_content_buffer[index], "#%d\n", msg_counter);
+
+    if (temperature != -127)
+    {
+        index += sprintf(&screen_content_buffer[index], "DS18B20: Temperature %.2f°C\n", temperature);
+    }
+    else
+    {
+        index += sprintf(&screen_content_buffer[index], "DS18B20: Not connected\n");
+    }
+
+    if (pressure != NAN)
+    {
+        index += sprintf(&screen_content_buffer[index], "BME280: Pressure %.2f hPa, Humidity %.2f, Temperature %.2f°C\n",
+            pressure, humidity, temp);
+    }
+    else
+    {
+        index += sprintf(&screen_content_buffer[index], "BME280: Not connected\n");
+    }
+
+    index += sprintf(&screen_content_buffer[index], "Voltage: %.2fV ", supply_voltage);
+
+    // ==================================
+    // send to meshtastic
+    Serial.println("==================================");
+    Serial.println(screen_content_buffer);
+    Serial.println("==================================");
+
+    node_send_message(1, screen_content_buffer);
+
+    return SCHEDULER_STOP_TASK;
+}
+
 
 static int measure_sequence_task(void)
 {
@@ -169,12 +227,17 @@ static int measure_sequence_task(void)
     temperature_sensor_measure();
     humidity_sensor_measure();
 
+    // Do measurement analysis after 2 seconds. All measurements should be ready then.
+    scheduler_add_task(measurement_analysis_task, 2000);
     return MEASUREMENT_SEQUENCE_INTERVAL_ms;
 }
+
+#define NODE_REINIT_TIME_IF_NOT_CONNECTED (30*1000)
 
 static int node_start_task(void)
 {
     static uint8_t state = 0;
+    static long init_called_at_time = 0;
     int time_for_next_call = SCHEDULER_STOP_TASK;
     switch (state)
     {
@@ -185,12 +248,18 @@ static int node_start_task(void)
     case 1: // node_init()
         state = 2;
         node_init();
+        init_called_at_time = millis();
         node_init_called = true;
         time_for_next_call = 1;
         break;
     case 2: // node_loop()
         node_loop();
         time_for_next_call = 2;
+
+        if (!node_is_connected() && (millis() - init_called_at_time) > NODE_REINIT_TIME_IF_NOT_CONNECTED )
+        {
+            state = 1; // Go back to init state if not connected
+        }
         break;
     default:
         break;

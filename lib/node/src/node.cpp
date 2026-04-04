@@ -24,11 +24,11 @@ static void text_message_callback(uint32_t from, uint32_t to, uint8_t channel, c
 
 void node_init(void)
 {
-    Serial.println("Booted Meshtastic send/receive client in serial mode");
+    Serial.println("Initializing Meshtastic client in serial mode");
     mt_serial_init(SERIAL_RX_PIN, SERIAL_TX_PIN, BAUD_RATE);
 
     // Set to true if you want debug messages
-    mt_set_debug(false);
+    mt_set_debug(true);
 
     randomSeed(micros());
 
