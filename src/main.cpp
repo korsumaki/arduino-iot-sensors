@@ -92,7 +92,7 @@ void handle_buttons(void)
 const char * content_temperature(void)
 {
     static char screen_content_buffer[100] = { 0 };
-    sprintf(screen_content_buffer, "Temperature:\n%.2f C ", temperature_get());
+    sprintf(screen_content_buffer, "Temperature:\n%.2f°C ", temperature_get());
     return screen_content_buffer;
 }
 const char * content_humidity(void)
@@ -103,7 +103,7 @@ const char * content_humidity(void)
     humidity_sensor_get(pressure, temp, humidity);
 
     static char screen_content_buffer[100] = { 0 };
-    sprintf(screen_content_buffer, "%.2f%%\n%0.2f hPa\n%0.2f C ", humidity, pressure, temp);
+    sprintf(screen_content_buffer, "%.2f%%\n%0.2f hPa\n%0.2f°C ", humidity, pressure, temp);
     return screen_content_buffer;
 }
 
@@ -144,19 +144,31 @@ const char * content_node(void)
 const char * content_interval(void)
 {
     static char screen_content_buffer[100] = { 0 };
+    uint8_t hours = 0;    
+    uint8_t minutes = 0;
+    uint32_t seconds = MEASUREMENT_SEQUENCE_INTERVAL_ms/1000;
 
-    float interval_sec = MEASUREMENT_SEQUENCE_INTERVAL_ms/1000;
-    if (interval_sec < 60)
+    // Divide interval to hours, minutes and seconds
+    hours = seconds / (60*60);
+    seconds -= hours * (60*60);
+
+    minutes = seconds / 60;
+    seconds -= minutes * 60;
+
+    int index = 0;
+    index += sprintf(&screen_content_buffer[index], "Interval:\n");
+
+    if (hours > 0)
     {
-        sprintf(screen_content_buffer, "Interval:\n%.2f sec ", interval_sec);
+        index += sprintf(&screen_content_buffer[index], "%dh ", hours);
     }
-    else if (interval_sec < 60*60)
+    if (minutes > 0)
     {
-        sprintf(screen_content_buffer, "Interval:\n%.2f min ", (interval_sec/60.0f));
+        index += sprintf(&screen_content_buffer[index], "%dmin ", minutes);
     }
-    else
+    if (seconds > 0)
     {
-        sprintf(screen_content_buffer, "Interval:\n%.2f h ", (interval_sec/(60.0f*60.0f)));
+        index += sprintf(&screen_content_buffer[index], "%dsec ", seconds);
     }
 
     return screen_content_buffer;
@@ -199,7 +211,7 @@ static int measurement_analysis_task(void)
 
     if (pressure != NAN)
     {
-        index += sprintf(&screen_content_buffer[index], "BME280: Pressure %.2f hPa, Humidity %.2f, Temperature %.2f°C\n",
+        index += sprintf(&screen_content_buffer[index], "BME280: Pressure %.2f hPa, Humidity %.2f%%, Temperature %.2f°C\n",
             pressure, humidity, temp);
     }
     else
