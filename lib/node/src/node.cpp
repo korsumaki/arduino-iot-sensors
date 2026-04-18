@@ -25,7 +25,14 @@ static void text_message_callback(uint32_t from, uint32_t to, uint8_t channel, c
 void node_init(void)
 {
     Serial.println("Initializing Meshtastic client in serial mode");
-    mt_serial_init(SERIAL_RX_PIN, SERIAL_TX_PIN, BAUD_RATE);
+
+    // Do mt_serial_init() only once, to prevent memory leak
+    static bool mt_serial_init_called = false;
+    if (!mt_serial_init_called)
+    {
+        mt_serial_init(SERIAL_RX_PIN, SERIAL_TX_PIN, BAUD_RATE);
+        mt_serial_init_called = true;
+    }
 
     // Set to true if you want debug messages
     mt_set_debug(true);
