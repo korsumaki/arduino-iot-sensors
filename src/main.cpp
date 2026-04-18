@@ -5,6 +5,7 @@
 #include <voltage.h>
 #include <content.h> // Screen content handling
 #include <node.h>
+#include <value_analysis.h>
 
 
 // Display: ESP8266 and ESP32 OLED driver for SSD1306 displays 
@@ -12,9 +13,22 @@
 #include <LOLIN_I2C_BUTTON.h>
 #include "SSD1306Wire.h"
 
+#define PRODUCTION_SCHEDULING // Undef for development
 
-//#define MEASUREMENT_SEQUENCE_INTERVAL_ms (5*1000) // development
+
+#ifdef PRODUCTION_SCHEDULING
+
 #define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
+#define ANALYZER_TIME_PERIOD_sec (60*60)
+#define ANALYZER_TIME_PERIOD_str "h" // Used for output string generation, "min" or "h"
+
+#else // Development
+
+#define MEASUREMENT_SEQUENCE_INTERVAL_ms (6*1000) // development
+#define ANALYZER_TIME_PERIOD_sec 60
+#define ANALYZER_TIME_PERIOD_str "min" // Used for output string generation, "min" or "h"
+
+#endif // PRODUCTION_SCHEDULING
 
 
 // Initialize the OLED display using Wire library
@@ -174,9 +188,26 @@ const char * content_interval(void)
     return screen_content_buffer;
 }
 
+
+value_analysis_t temperature_analyzer;
+value_analysis_t pressure_analyzer;
+value_analysis_t temp_analyzer;
+value_analysis_t humidity_analyzer;
+value_analysis_t voltage_analyzer;
+
+static void init_analyzers(void)
+{
+    value_analysis_init(&temperature_analyzer, ANALYZER_TIME_PERIOD_sec);
+    value_analysis_init(&pressure_analyzer, ANALYZER_TIME_PERIOD_sec);
+    value_analysis_init(&temp_analyzer, ANALYZER_TIME_PERIOD_sec);
+    value_analysis_init(&humidity_analyzer, ANALYZER_TIME_PERIOD_sec);
+    value_analysis_init(&voltage_analyzer, ANALYZER_TIME_PERIOD_sec);
+}
+
+
 static int measurement_analysis_task(void)
 {
-    char screen_content_buffer[150] = { 0 };
+    char screen_content_buffer[200] = { 0 };
     static int msg_counter = 0;
 
     // ==================================
@@ -192,6 +223,13 @@ static int measurement_analysis_task(void)
 
     // ==================================
     // do analysis
+    long current_time = millis();
+
+    float temperature_change = value_analysis_add_value(&temperature_analyzer, temperature, current_time);
+    float pressure_change = value_analysis_add_value(&pressure_analyzer, pressure, current_time);
+    float temp_change = value_analysis_add_value(&temp_analyzer, temp, current_time);
+    float humidity_change = value_analysis_add_value(&humidity_analyzer, humidity, current_time);
+    float voltage_change = value_analysis_add_value(&voltage_analyzer, supply_voltage, current_time);
 
     // ==================================
     // create string
@@ -202,7 +240,7 @@ static int measurement_analysis_task(void)
 
     if (temperature != -127)
     {
-        index += sprintf(&screen_content_buffer[index], "DS18B20: Temperature %.2f°C\n", temperature);
+        index += sprintf(&screen_content_buffer[index], "DS18B20: Temperature %.2f°C (%.2f°C/%s)\n", temperature, temperature_change, ANALYZER_TIME_PERIOD_str);
     }
     else
     {
@@ -211,15 +249,17 @@ static int measurement_analysis_task(void)
 
     if (pressure != NAN)
     {
-        index += sprintf(&screen_content_buffer[index], "BME280: Pressure %.2f hPa, Humidity %.2f%%, Temperature %.2f°C\n",
-            pressure, humidity, temp);
+        index += sprintf(&screen_content_buffer[index], "BME280: Pressure %.2f hPa (%.2f hPa/%s), Humidity %.2f%% (%.2f%%/%s), Temperature %.2f°C (%.2f°C/%s)\n",
+            pressure, pressure_change, ANALYZER_TIME_PERIOD_str,
+            humidity, humidity_change, ANALYZER_TIME_PERIOD_str,
+            temp, temp_change, ANALYZER_TIME_PERIOD_str);
     }
     else
     {
         index += sprintf(&screen_content_buffer[index], "BME280: Not connected\n");
     }
 
-    index += sprintf(&screen_content_buffer[index], "Voltage: %.2fV ", supply_voltage);
+    index += sprintf(&screen_content_buffer[index], "Voltage: %.2fV (%.2fV/%s) ", supply_voltage, voltage_change, ANALYZER_TIME_PERIOD_str);
 
     // ==================================
     // send to meshtastic
@@ -292,6 +332,8 @@ void setup()
     content_add_page(content_humidity);
     content_add_page(content_voltage);
     content_add_page(content_interval);
+
+    init_analyzers();
 
     temperature_sensor_init();
     humidity_sensor_init();
