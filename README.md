@@ -17,13 +17,13 @@ Wemos d1 mini arduino is measuring temperature and humidity sensors, do some ana
 
 ### Meshtastic Node settings
 
-Setup Meshtastic node with following settings
+Setup Meshtastic node (XIAO nRF kit) with following settings
 
 * Enable Serial module
-    - RX pin: D7
-    - TX pin: D6
-    - Serial baud rate: 57600
-    - Serial mode: proto
+    - RX pin: **D7**
+    - TX pin: **D6**
+    - Serial baud rate: **57600**
+    - Serial mode: **proto**
 * 
 
 ## Next things to do
@@ -36,9 +36,7 @@ Setup Meshtastic node with following settings
 ### Main / Business logic
 
 - boot logic
-    - delay before uart traffic
-    - check meshtastic node readiness with timer
-- sending uart messages
+    - use led to inform startup phases (when display is not connected)
 
 ### Current consumption
 

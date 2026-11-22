@@ -4,8 +4,62 @@
 #include <humidity_sensor.h>
 #include <voltage.h>
 #include <content.h> // Screen content handling
-#include <node.h>
 #include <value_analysis.h>
+
+
+#define GATEWAY_WIFI_MQTT
+//#define GATEWAY_MESHTASTIC
+//#define GATEWAY_MESHTASTIC_TO_WIFI
+
+
+#ifdef GATEWAY_MESHTASTIC
+#include <node.h>
+
+#define MESHTASTIC_SENDING_CHANNEL_INDEX 1
+
+#endif // GATEWAY_MESHTASTIC
+
+
+#ifdef GATEWAY_WIFI_MQTT
+
+#include <ESP8266WiFi.h>
+#include "Adafruit_MQTT.h"
+#include "Adafruit_MQTT_Client.h"
+
+/************************* WiFi Access Point *********************************/
+#define WLAN_SSID       "YOUR_WIFI_SSID"
+#define WLAN_PASS       "YOUR_WIFI_PASSWORD"
+
+/************************* Adafruit.io Setup *********************************/
+#define AIO_SERVER      "io.adafruit.com"
+#define AIO_SERVERPORT  1883 // 8883
+#define AIO_USERNAME    "YOUR_ADAFRUIT_IO_USERNAME"
+#define AIO_KEY         "YOUR_ADAFRUIT_IO_KEY"
+
+// Create an ESP8266 WiFiClient class to connect to the MQTT server.
+WiFiClient client;
+// or... use WiFiClientSecure for SSL
+//WiFiClientSecure client;
+
+// Create a unique Client ID using the ESP8266's built-in chip ID
+String clientId = "wemos_" + String(ESP.getChipId(), HEX);
+
+Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, clientId.c_str(), AIO_USERNAME, AIO_KEY);
+
+Adafruit_MQTT_Subscribe timefeed = Adafruit_MQTT_Subscribe(&mqtt, "time/seconds");
+
+Adafruit_MQTT_Publish viesti = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/viesti");
+Adafruit_MQTT_Publish mqtt_feeds_temperature = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/temperature");
+Adafruit_MQTT_Publish mqtt_feeds_humidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/humidity");
+Adafruit_MQTT_Publish mqtt_feeds_pressure = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/pressure");
+Adafruit_MQTT_Publish mqtt_feeds_measurements = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/measurements");
+
+/*************************** Error Reporting *********************************/
+
+Adafruit_MQTT_Subscribe errors = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/errors");
+Adafruit_MQTT_Subscribe throttle = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/throttle");
+
+#endif // GATEWAY_WIFI_MQTT
 
 
 // Display: ESP8266 and ESP32 OLED driver for SSD1306 displays 
@@ -131,6 +185,8 @@ const char * content_voltage(void)
     return screen_content_buffer;
 }
 
+#ifdef GATEWAY_MESHTASTIC
+
 bool node_init_called = false;
 
 const char * content_node(void)
@@ -154,6 +210,8 @@ const char * content_node(void)
         node_get_received_count());
     return screen_content_buffer;
 }
+
+#endif // GATEWAY_MESHTASTIC
 
 const char * content_interval(void)
 {
@@ -187,6 +245,46 @@ const char * content_interval(void)
 
     return screen_content_buffer;
 }
+
+#ifdef GATEWAY_WIFI_MQTT
+
+const char * content_wifi(void)
+{
+    static char screen_content_buffer[100] = { 0 };
+    wl_status_t status = WiFi.status();
+    static const char* status_str[] =
+    {
+        "IDLE_STATUS",
+        "NO_SSID_AVAIL",
+        "SCAN_COMPLETED",
+        "CONNECTED",
+        "CONNECT_FAILED",
+        "CONNECTION_LOST",
+        "WRONG_PASSWORD",
+        "DISCONNECTED"
+    };
+
+    sprintf(screen_content_buffer, "WiFi:\n%s\n%s ",
+        WiFi.SSID().c_str(),
+        status_str[status]);
+
+    return screen_content_buffer;
+}
+
+const char * content_mqtt(void)
+{
+    static char screen_content_buffer[100] = { 0 };
+    const char * status = "Disconnected";
+    if (mqtt.connected())
+    {
+        status = "Connected";
+    }
+    sprintf(screen_content_buffer, "MQTT %s\n%s\n%s ", status, AIO_SERVER, clientId.c_str());
+
+    return screen_content_buffer;
+}
+
+#endif // GATEWAY_WIFI_MQTT
 
 
 value_analysis_t temperature_analyzer;
@@ -267,7 +365,17 @@ static int measurement_analysis_task(void)
     Serial.println(screen_content_buffer);
     Serial.println("==================================");
 
-    node_send_message(1, screen_content_buffer);
+#ifdef GATEWAY_MESHTASTIC
+    node_send_message(MESHTASTIC_SENDING_CHANNEL_INDEX, screen_content_buffer);
+#endif // GATEWAY_MESHTASTIC
+
+#ifdef GATEWAY_WIFI_MQTT
+    // Send mqtt messages
+    mqtt_feeds_measurements.publish(screen_content_buffer);
+    mqtt_feeds_temperature.publish(temp);
+    mqtt_feeds_humidity.publish(humidity);
+    mqtt_feeds_pressure.publish(pressure);
+#endif // GATEWAY_WIFI_MQTT
 
     return SCHEDULER_STOP_TASK;
 }
@@ -283,6 +391,8 @@ static int measure_sequence_task(void)
     scheduler_add_task(measurement_analysis_task, 2000);
     return MEASUREMENT_SEQUENCE_INTERVAL_ms;
 }
+
+#ifdef GATEWAY_MESHTASTIC
 
 #define NODE_REINIT_TIME_IF_NOT_CONNECTED (30*1000)
 
@@ -319,6 +429,14 @@ static int node_start_task(void)
     return time_for_next_call;
 }
 
+#endif // GATEWAY_MESHTASTIC
+
+#ifdef GATEWAY_WIFI_MQTT
+
+void mqtt_setup(void);
+void mqtt_loop(uint32_t usable_time_ms);
+
+#endif // GATEWAY_WIFI_MQTT
 
 void setup()
 {
@@ -327,7 +445,16 @@ void setup()
 
     init_display();
     content_init();
+
+#ifdef GATEWAY_WIFI_MQTT
+    content_add_page(content_wifi);
+    content_add_page(content_mqtt);
+#endif // GATEWAY_WIFI_MQTT
+
+#ifdef GATEWAY_MESHTASTIC
     content_add_page(content_node);
+#endif // GATEWAY_MESHTASTIC
+
     content_add_page(content_temperature);
     content_add_page(content_humidity);
     content_add_page(content_voltage);
@@ -340,12 +467,126 @@ void setup()
 
     // Add task for display updating
     scheduler_add_task(display_loop_task, 0);
-    scheduler_add_task(measure_sequence_task, 100);
+    scheduler_add_task(measure_sequence_task, 1000*3);
+
+#ifdef GATEWAY_MESHTASTIC
     scheduler_add_task(node_start_task, 0);
+#endif // GATEWAY_MESHTASTIC
+
+#ifdef GATEWAY_WIFI_MQTT
+    // MQTT setup
+    mqtt_setup();
+#endif // GATEWAY_WIFI_MQTT
 }
 
 void loop()
 {
     handle_buttons();
-    scheduler_loop();
+    uint32_t next_run_ms = scheduler_loop();
+    (void)next_run_ms;
+#ifdef GATEWAY_WIFI_MQTT
+    mqtt_loop(next_run_ms);
+#endif // GATEWAY_WIFI_MQTT
 }
+
+
+#ifdef GATEWAY_WIFI_MQTT
+// MQTT stuff
+
+void MQTT_connect(void);
+
+
+void timecallback(uint32_t current)
+{
+    Serial.printf("time is %d\n", current);
+}
+
+void error_callback(char *str, uint16_t len)
+{
+    Serial.printf("error_callback: %s\n", str);
+}
+
+void throttle_callback(char *str, uint16_t len)
+{
+    Serial.printf("throttle_callback: %s\n", str);
+}
+
+void mqtt_setup(void)
+{
+    Serial.println(F("Initialize WiFi and mqtt"));
+    Serial.printf("clientId: %s\n", clientId.c_str());
+
+    WiFi.begin(WLAN_SSID, WLAN_PASS);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(F("."));
+    }
+    Serial.println(F(" WiFi connected."));
+
+    //timefeed.setCallback(timecallback);
+    //mqtt.subscribe(&timefeed);
+
+    // Setup MQTT subscriptions for throttle & error messages
+    errors.setCallback(error_callback);
+    mqtt.subscribe(&errors);
+    throttle.setCallback(throttle_callback);
+    mqtt.subscribe(&throttle);
+}
+
+void mqtt_loop(uint32_t usable_time_ms)
+{
+    // Ensure the connection to the MQTT server is alive (this will make the first
+    // connection and automatically reconnect when disconnected).  See the MQTT_connect
+    // function definition further below.
+    MQTT_connect();
+
+    static bool started = false;
+    if (!started)
+    {
+        started = true;
+        if (!viesti.publish("Running!"))
+        {
+            Serial.println(F("publish: Failed"));
+        }
+    }
+
+    // wait for subscription messages
+    mqtt.processPackets(usable_time_ms);
+
+    // keep the connection alive
+    mqtt.ping();
+}
+
+// Function to connect and reconnect as necessary to the MQTT server.
+// Should be called in the loop function and it will take care if connecting.
+void MQTT_connect(void)
+{
+    // Stop if already connected.
+    if (mqtt.connected())
+    {
+        return;
+    }
+
+    Serial.print("Connecting to MQTT... ");
+
+    uint8_t retries = 3;
+    int8_t ret;
+    while ((ret = mqtt.connect()) != 0)
+    { // connect will return 0 for connected
+        Serial.println(mqtt.connectErrorString(ret));
+        Serial.println("Retrying MQTT connection in 5 seconds...");
+        mqtt.disconnect();
+        delay(5000); // wait 5 seconds
+        retries--;
+        if (retries == 0)
+        {
+            // basically die and wait for WDT to reset me
+            while (1)
+                ;
+        }
+    }
+
+    Serial.println("MQTT Connected!");
+}
+#endif // GATEWAY_WIFI_MQTT
