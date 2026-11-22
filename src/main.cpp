@@ -6,16 +6,41 @@
 #include <content.h> // Screen content handling
 #include <value_analysis.h>
 
+/////////////////
+// Config
+/////////////////
 
 #define GATEWAY_WIFI_MQTT
 //#define GATEWAY_MESHTASTIC
 //#define GATEWAY_MESHTASTIC_TO_WIFI
+
+#define PRODUCTION_SCHEDULING // Undef for development
+
+/////////////////
+// End of Config
+/////////////////
+
+
+#ifdef PRODUCTION_SCHEDULING
+
+#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
+#define ANALYZER_TIME_PERIOD_sec (60*60)
+#define ANALYZER_TIME_PERIOD_str "h" // Used for output string generation, "min" or "h"
+
+#else // Development
+
+#define MEASUREMENT_SEQUENCE_INTERVAL_ms (6*1000) // development
+#define ANALYZER_TIME_PERIOD_sec 60
+#define ANALYZER_TIME_PERIOD_str "min" // Used for output string generation, "min" or "h"
+
+#endif // PRODUCTION_SCHEDULING
 
 
 #ifdef GATEWAY_MESHTASTIC
 #include <node.h>
 
 #define MESHTASTIC_SENDING_CHANNEL_INDEX 1
+#define NODE_REINIT_TIME_IF_NOT_CONNECTED (30*1000)
 
 #endif // GATEWAY_MESHTASTIC
 
@@ -66,24 +91,6 @@ Adafruit_MQTT_Subscribe throttle = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "
 // 2x I2C Button (customizable I2C Address, default:0x31)
 #include <LOLIN_I2C_BUTTON.h>
 #include "SSD1306Wire.h"
-
-#define PRODUCTION_SCHEDULING // Undef for development
-
-
-#ifdef PRODUCTION_SCHEDULING
-
-#define MEASUREMENT_SEQUENCE_INTERVAL_ms (10*60*1000) // production
-#define ANALYZER_TIME_PERIOD_sec (60*60)
-#define ANALYZER_TIME_PERIOD_str "h" // Used for output string generation, "min" or "h"
-
-#else // Development
-
-#define MEASUREMENT_SEQUENCE_INTERVAL_ms (6*1000) // development
-#define ANALYZER_TIME_PERIOD_sec 60
-#define ANALYZER_TIME_PERIOD_str "min" // Used for output string generation, "min" or "h"
-
-#endif // PRODUCTION_SCHEDULING
-
 
 // Initialize the OLED display using Wire library
 SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_64_48);
@@ -185,34 +192,6 @@ const char * content_voltage(void)
     return screen_content_buffer;
 }
 
-#ifdef GATEWAY_MESHTASTIC
-
-bool node_init_called = false;
-
-const char * content_node(void)
-{
-    static char screen_content_buffer[100] = { 0 };
-    const char * node_state = "not started";
-    if (node_init_called)
-    {
-        if (node_is_connected())
-        {
-            node_state = "connected";
-        }
-        else
-        {
-            node_state = "init";
-        }
-    }
-    sprintf(screen_content_buffer, "Node %s\nsent: %d\nrecv: %d ",
-        node_state,
-        node_get_sent_count(),
-        node_get_received_count());
-    return screen_content_buffer;
-}
-
-#endif // GATEWAY_MESHTASTIC
-
 const char * content_interval(void)
 {
     static char screen_content_buffer[100] = { 0 };
@@ -245,6 +224,67 @@ const char * content_interval(void)
 
     return screen_content_buffer;
 }
+
+#ifdef GATEWAY_MESHTASTIC
+
+bool node_init_called = false;
+
+const char * content_node(void)
+{
+    static char screen_content_buffer[100] = { 0 };
+    const char * node_state = "not started";
+    if (node_init_called)
+    {
+        if (node_is_connected())
+        {
+            node_state = "connected";
+        }
+        else
+        {
+            node_state = "init";
+        }
+    }
+    sprintf(screen_content_buffer, "Node %s\nsent: %d\nrecv: %d ",
+        node_state,
+        node_get_sent_count(),
+        node_get_received_count());
+    return screen_content_buffer;
+}
+
+static int node_start_task(void)
+{
+    static uint8_t state = 0;
+    static long init_called_at_time = 0;
+    int time_for_next_call = SCHEDULER_STOP_TASK;
+    switch (state)
+    {
+    case 0: // from start, wait >10 sec before node_init()
+        state = 1;
+        time_for_next_call = 12*1000;
+        break;
+    case 1: // node_init()
+        state = 2;
+        node_init();
+        init_called_at_time = millis();
+        node_init_called = true;
+        time_for_next_call = 1;
+        break;
+    case 2: // node_loop()
+        node_loop();
+        time_for_next_call = 2;
+
+        if (!node_is_connected() && (millis() - init_called_at_time) > NODE_REINIT_TIME_IF_NOT_CONNECTED )
+        {
+            state = 1; // Go back to init state if not connected
+        }
+        break;
+    default:
+        break;
+    }
+    return time_for_next_call;
+}
+
+#endif // GATEWAY_MESHTASTIC
 
 #ifdef GATEWAY_WIFI_MQTT
 
@@ -392,44 +432,6 @@ static int measure_sequence_task(void)
     return MEASUREMENT_SEQUENCE_INTERVAL_ms;
 }
 
-#ifdef GATEWAY_MESHTASTIC
-
-#define NODE_REINIT_TIME_IF_NOT_CONNECTED (30*1000)
-
-static int node_start_task(void)
-{
-    static uint8_t state = 0;
-    static long init_called_at_time = 0;
-    int time_for_next_call = SCHEDULER_STOP_TASK;
-    switch (state)
-    {
-    case 0: // from start, wait >10 sec before node_init()
-        state = 1;
-        time_for_next_call = 12*1000;
-        break;
-    case 1: // node_init()
-        state = 2;
-        node_init();
-        init_called_at_time = millis();
-        node_init_called = true;
-        time_for_next_call = 1;
-        break;
-    case 2: // node_loop()
-        node_loop();
-        time_for_next_call = 2;
-
-        if (!node_is_connected() && (millis() - init_called_at_time) > NODE_REINIT_TIME_IF_NOT_CONNECTED )
-        {
-            state = 1; // Go back to init state if not connected
-        }
-        break;
-    default:
-        break;
-    }
-    return time_for_next_call;
-}
-
-#endif // GATEWAY_MESHTASTIC
 
 #ifdef GATEWAY_WIFI_MQTT
 
