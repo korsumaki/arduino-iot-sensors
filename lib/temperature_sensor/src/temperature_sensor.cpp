@@ -21,7 +21,8 @@ float temperature_get(void)
 static int temperature_sensor_meas_task(void)
 {
     static bool is_temperature_requested = false;
-    static int conversion_time = sensors.millisToWaitForConversion();
+    // Give 10ms more time for conversion
+    static int conversion_time = sensors.millisToWaitForConversion() + 10;
 
     int time_for_next_call = 0;
 
